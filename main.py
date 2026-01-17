@@ -56,6 +56,7 @@ while running:
     if distance_to_center <=  planet_radius :
         player_x = new_x
         player_y = new_y
+
     screen.fill(black)
     pygame.draw.circle(screen, green, planet_center, planet_radius)
     pygame.draw.circle(screen, blue, (int(player_x), int(player_y)), player_radius)
