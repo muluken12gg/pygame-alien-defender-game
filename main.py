@@ -1,5 +1,6 @@
 import pygame
 import math
+import random
 
 pygame.init()
 WIDTH, HEIGHT = 800, 800
@@ -26,6 +27,18 @@ player_speed = 4
 player_angle = 0
 
 base_radius = 36
+
+aliens=[]
+alien_speed = 1.5
+alien_radius = 12
+alien_spawn_delay = 120
+spawn_time = 0
+
+mountains = [
+    (planet_center[0]-200, planet_center[1]+40 , 35),
+    (planet_center[0]+120, planet_center[1]-20, 40),
+    (planet_center[0]+190, planet_center[1]+80, 50)
+]
 
 bullets = []
 bullet_speed = 8
@@ -93,10 +106,41 @@ while running:
         bullet[0] += bullet[2]
         bullet[1] += bullet[3]
 
+        if math.hypot(bullet[0] - planet_center[0], bullet[1] - planet_center[1]) > planet_radius:
+            bullets.remove(bullet)
+            continue
+
+        for mx, my, mr in mountains:
+            if math.hypot(bullet[0] - mx, bullet[1] - my) < mr:
+                bullets.remove(bullet)
+                break
+
+    spawn_time += 1
+    if spawn_time >= alien_spawn_delay:
+        spawn_time = 0
+        angle = random.uniform(0, 2 * math.pi)
+        ax = planet_center[0] + math.cos(angle) * planet_radius
+        ay = planet_center[1] + math.sin(angle) * planet_radius
+        aliens.append([ax, ay])
+
+    for alien in aliens:
+        dx = planet_center[0] - alien[0]
+        dy = planet_center[1] - alien[1]
+        length = math.hypot(dx, dy)
+        if length != 0:
+            alien[0] += dx/length * alien_speed
+            alien[1] += dy/length * alien_speed
+
     screen.fill(black)
     pygame.draw.circle(screen, green, planet_center, planet_radius)
     pygame.draw.circle(screen, gray, planet_center, base_radius)
     draw_player(screen, player_x, player_y, player_angle)
+
+    for alien in aliens:
+        pygame.draw.circle(screen, red, (int(alien[0]), int(alien[1])), alien_radius)
+
+    for mx, my, mr in mountains:
+        pygame.draw.circle(screen, gray, (mx, my), mr)
     for bullet in bullets:
         pygame.draw.circle(
             screen, yellow, (int(bullet[0]), int(bullet[1])), bullet_radius
