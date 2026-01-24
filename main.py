@@ -13,6 +13,15 @@ blue = (80,120,255)
 red = (200,60,60)
 yellow = (255,220,100)
 gray = (120,120,120)
+sky_blue = (135, 206, 235)
+orange = (255, 165, 0)
+purple = (128, 0, 128)
+lava_red = (207, 16, 32)
+brown = (139, 69, 19)
+pink = (255, 105, 180)
+yellow_2 = (255, 255, 0)
+cyan = (0, 255,255)
+magenta = (255, 0, 255)
 
 clock = pygame.time.Clock()
 FPS = 60
@@ -43,6 +52,11 @@ mountains = [
 bullets = []
 bullet_speed = 8
 bullet_radius = 3
+
+alien_bullets = []
+alien_bullet_radius = 4
+alien_bullet_speed = 6
+alien_shoot_delay = 90
 
 def draw_player(surface, x, y, angle):
     size = 16
@@ -115,21 +129,61 @@ while running:
                 bullets.remove(bullet)
                 break
 
+    for bullet in alien_bullets[:]:
+        bullet[0] += bullet[2]
+        bullet[1] += bullet[3]
+
+        if math.hypot(bullet[0] - planet_center[0], bullet[1] - planet_center[1]) > planet_radius:
+            alien_bullets.remove(bullet)
+            continue
+
+        for mx, my, mr in mountains:
+            if math.hypot(bullet[0] - mx, bullet[1] - my) < mr:
+                alien_bullets.remove(bullet)
+                break
+
+        if math.hypot(bullet[0] - player_x, bullet[1] - player_y) < player_radius:
+            alien_bullets.remove(bullet)
+            break
+
     spawn_time += 1
     if spawn_time >= alien_spawn_delay:
         spawn_time = 0
         angle = random.uniform(0, 2 * math.pi)
         ax = planet_center[0] + math.cos(angle) * planet_radius
         ay = planet_center[1] + math.sin(angle) * planet_radius
-        aliens.append([ax, ay])
+        aliens.append({
+            "x" : ax,
+            "y" : ay,
+            "cooldown" : random.randint(30, alien_shoot_delay)
+        })
 
     for alien in aliens:
-        dx = planet_center[0] - alien[0]
-        dy = planet_center[1] - alien[1]
+        dx = planet_center[0] - alien["x"]
+        dy = planet_center[1] - alien["y"]
         length = math.hypot(dx, dy)
         if length != 0:
-            alien[0] += dx/length * alien_speed
-            alien[1] += dy/length * alien_speed
+            alien["x"] += dx/length * alien_speed
+            alien["y"] += dy/length * alien_speed
+
+        alien["cooldown"] -= 1
+        if alien["cooldown"] <= 0:
+            alien["cooldown"] = alien_shoot_delay
+
+            shoot_dx = player_x - alien["x"]
+            shoot_dy = player_y - alien["y"]
+            shoot_len = math.hypot(shoot_dx, shoot_dy)
+
+            if shoot_len != 0:
+                vx = shoot_dx/shoot_len * alien_bullet_speed
+                vy = shoot_dy/shoot_len * alien_bullet_speed
+
+            alien_bullets.append([
+                alien["x"],
+                alien["y"],
+                vx,
+                vy
+            ])
 
     screen.fill(black)
     pygame.draw.circle(screen, green, planet_center, planet_radius)
@@ -137,10 +191,12 @@ while running:
     draw_player(screen, player_x, player_y, player_angle)
 
     for alien in aliens:
-        pygame.draw.circle(screen, red, (int(alien[0]), int(alien[1])), alien_radius)
+        pygame.draw.circle(screen, red, (int(alien["x"]), int(alien["y"])), alien_radius)
 
     for mx, my, mr in mountains:
-        pygame.draw.circle(screen, gray, (mx, my), mr)
+        pygame.draw.circle(screen, brown, (mx, my), mr)
+    for bullet in alien_bullets:
+        pygame.draw.circle(screen, pink, (int(bullet[0]), int(bullet[1])), alien_bullet_radius)
     for bullet in bullets:
         pygame.draw.circle(
             screen, yellow, (int(bullet[0]), int(bullet[1])), bullet_radius
