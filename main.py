@@ -300,7 +300,7 @@ while running:
     for mx, my, mr in mountains:
         pygame.draw.circle(screen, brown, (mx, my), mr)
     for bullet in alien_bullets:
-        pygame.draw.circle(screen, pink, (int(bullet[0]), int(bullet[1])), alien_bullet_radius)
+        pygame.draw.circle(screen, yellow_2, (int(bullet[0]), int(bullet[1])), alien_bullet_radius)
     for bullet in bullets:
         pygame.draw.circle(
             screen, yellow, (int(bullet[0]), int(bullet[1])), bullet_radius
