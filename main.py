@@ -3,6 +3,7 @@ import math
 import random
 
 pygame.init()
+pygame.mixer.init()
 WIDTH, HEIGHT = 800, 800
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("my game")
@@ -37,6 +38,7 @@ player_angle = 0
 player_max_health = 100
 player_health = player_max_health
 player_alive = True
+game_over = False
 player_fire_rate = 10
 player_fire_cooldown = 0
 
@@ -47,6 +49,16 @@ alien_speed = 1.5
 alien_radius = 12
 alien_spawn_delay = 120
 spawn_time = 0
+
+alien_laser_shot = pygame.mixer.Sound("sounds\laser_weapon_shot.wav")
+player_laser_shot = pygame.mixer.Sound("sounds\player_laser_gun.wav")
+game_over_sound = pygame.mixer.Sound("sounds\game_over_sound.wav")
+alien_die_sound = pygame.mixer.Sound("sounds/alien_dieing_sound.wav")
+
+alien_laser_shot.set_volume(0.1)
+player_laser_shot.set_volume(0.2)
+game_over_sound.set_volume(0.2)
+alien_die_sound.set_volume(0.15)
 
 mountains = [
     (planet_center[0]-200, planet_center[1]+40 , 35),
@@ -61,7 +73,7 @@ player_bullet_damage = 10
 
 alien_bullets = []
 alien_bullet_radius = 4
-alien_bullet_speed = 6
+alien_bullet_speed = 15
 alien_shoot_delay = 90
 alien_bullet_damage = 10
 
@@ -86,12 +98,33 @@ def draw_player_health(surface, health, max_health):
 
     pygame.draw.rect(surface, (255,255,255), (x, y, bar_width, bar_height), 2)
 
+def reset_game():
+    global player_x, player_y, player_health, player_alive
+    global bullets, alien_bullets, aliens
+    global game_over, spawn_time
+
+    player_x = planet_center[0]
+    player_y = planet_center[1]
+    player_health = player_max_health
+    player_alive = True
+
+    aliens.clear()
+    bullets.clear()
+    alien_bullets.clear()
+
+    spawn_time = 0
+    game_over = False
+
 running = True
 while running:
     clock.tick(FPS)
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running=False
+
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_SPACE and game_over:
+                reset_game()
     
     keys= pygame.key.get_pressed()
     dx = dy = 0
@@ -143,6 +176,8 @@ while running:
                 math.cos(player_angle) * bullet_speed,
                 math.sin(player_angle) * bullet_speed
             ])
+
+            player_laser_shot.play()
             player_fire_cooldown = player_fire_rate
 
     spawn_time += 1
@@ -185,6 +220,8 @@ while running:
                 vy
             ])
 
+            alien_laser_shot.play()
+
     for bullet in bullets[:]:
         bullet[0] += bullet[2]
         bullet[1] += bullet[3]
@@ -210,6 +247,7 @@ while running:
 
                 if alien["health"] <= 0:
                     aliens.remove(alien)
+                    alien_die_sound.play()
                 break
 
     for bullet in alien_bullets[:]:
@@ -229,9 +267,11 @@ while running:
             player_health -= alien_bullet_damage
             alien_bullets.remove(bullet)
 
-            if player_health <= 0:
+            if player_health <= 0 and not game_over:
                 player_health = 0
                 player_alive = False
+                game_over = True
+                game_over_sound.play()
             break
 
     screen.fill(black)
@@ -271,6 +311,11 @@ while running:
         text = font.render("YOU DIED", True, (255,80,80))
         rect = text.get_rect(center = (WIDTH//2, HEIGHT//2))
         screen.blit(text, rect)
+
+        small_font = pygame.font.SysFont(None, 32)
+        game_over_text = small_font.render('Click "space" to restart', True, black)
+        rect_2 = game_over_text.get_rect(center = (WIDTH//2, HEIGHT//2 + 26))
+        screen.blit(game_over_text, rect_2)
 
     pygame.display.flip()
 pygame.quit()
