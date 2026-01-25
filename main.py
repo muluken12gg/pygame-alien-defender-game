@@ -34,6 +34,7 @@ player_y = planet_center[1]
 player_radius = 8
 player_speed = 4
 player_angle = 0
+player_health = 100
 
 base_radius = 36
 
@@ -52,11 +53,13 @@ mountains = [
 bullets = []
 bullet_speed = 8
 bullet_radius = 3
+player_bullet_damage = 10
 
 alien_bullets = []
 alien_bullet_radius = 4
 alien_bullet_speed = 6
 alien_shoot_delay = 90
+alien_bullet_damage = 10
 
 def draw_player(surface, x, y, angle):
     size = 16
@@ -116,36 +119,6 @@ while running:
         mouse_x - player_x
     )
 
-    for bullet in bullets[:]:
-        bullet[0] += bullet[2]
-        bullet[1] += bullet[3]
-
-        if math.hypot(bullet[0] - planet_center[0], bullet[1] - planet_center[1]) > planet_radius:
-            bullets.remove(bullet)
-            continue
-
-        for mx, my, mr in mountains:
-            if math.hypot(bullet[0] - mx, bullet[1] - my) < mr:
-                bullets.remove(bullet)
-                break
-
-    for bullet in alien_bullets[:]:
-        bullet[0] += bullet[2]
-        bullet[1] += bullet[3]
-
-        if math.hypot(bullet[0] - planet_center[0], bullet[1] - planet_center[1]) > planet_radius:
-            alien_bullets.remove(bullet)
-            continue
-
-        for mx, my, mr in mountains:
-            if math.hypot(bullet[0] - mx, bullet[1] - my) < mr:
-                alien_bullets.remove(bullet)
-                break
-
-        if math.hypot(bullet[0] - player_x, bullet[1] - player_y) < player_radius:
-            alien_bullets.remove(bullet)
-            break
-
     spawn_time += 1
     if spawn_time >= alien_spawn_delay:
         spawn_time = 0
@@ -155,7 +128,8 @@ while running:
         aliens.append({
             "x" : ax,
             "y" : ay,
-            "cooldown" : random.randint(30, alien_shoot_delay)
+            "cooldown" : random.randint(30, alien_shoot_delay),
+            "health" : 30
         })
 
     for alien in aliens:
@@ -185,6 +159,48 @@ while running:
                 vy
             ])
 
+    for bullet in bullets[:]:
+        bullet[0] += bullet[2]
+        bullet[1] += bullet[3]
+
+        if math.hypot(bullet[0] - planet_center[0], bullet[1] - planet_center[1]) > planet_radius:
+            bullets.remove(bullet)
+            continue
+
+        for mx, my, mr in mountains:
+            if math.hypot(bullet[0] - mx, bullet[1] - my) < mr:
+                bullets.remove(bullet)
+                break
+        
+        for alien in aliens[:]:
+            if math.hypot(bullet[0] - alien["x"], bullet[1] - alien["y"]) < alien_radius:
+                alien["health"] -= player_bullet_damage
+                bullets.remove(bullet)
+
+                if alien["health"] <= 0:
+                    aliens.remove(alien)
+                break
+
+    for bullet in alien_bullets[:]:
+        bullet[0] += bullet[2]
+        bullet[1] += bullet[3]
+
+        if math.hypot(bullet[0] - planet_center[0], bullet[1] - planet_center[1]) > planet_radius:
+            alien_bullets.remove(bullet)
+            continue
+
+        for mx, my, mr in mountains:
+            if math.hypot(bullet[0] - mx, bullet[1] - my) < mr:
+                alien_bullets.remove(bullet)
+                break
+
+        if math.hypot(bullet[0] - player_x, bullet[1] - player_y) < player_radius:
+            player_health -= alien_bullet_damage
+            alien_bullets.remove(bullet)
+
+            
+            break
+
     screen.fill(black)
     pygame.draw.circle(screen, green, planet_center, planet_radius)
     pygame.draw.circle(screen, gray, planet_center, base_radius)
@@ -193,6 +209,20 @@ while running:
     for alien in aliens:
         pygame.draw.circle(screen, red, (int(alien["x"]), int(alien["y"])), alien_radius)
 
+        bar_width = 20
+        bar_height =4
+        health_ratio = alien["health"]/30
+
+        pygame.draw.rect(screen,
+                         magenta,
+                         (
+                            alien["x"] - bar_width//2,
+                            alien["y"] - alien_radius - 5,
+                            bar_width * health_ratio,
+                            bar_height
+                            )
+                        )
+                                           
     for mx, my, mr in mountains:
         pygame.draw.circle(screen, brown, (mx, my), mr)
     for bullet in alien_bullets:
