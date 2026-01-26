@@ -41,6 +41,7 @@ player_alive = True
 game_over = False
 player_fire_rate = 10
 player_fire_cooldown = 0
+player_flash = 0
 
 base_radius = 36
 
@@ -50,14 +51,14 @@ alien_radius = 12
 alien_spawn_delay = 120
 spawn_time = 0
 
-alien_laser_shot = pygame.mixer.Sound("sounds\laser_weapon_shot.wav")
-player_laser_shot = pygame.mixer.Sound("sounds\player_laser_gun.wav")
-game_over_sound = pygame.mixer.Sound("sounds\game_over_sound.wav")
+alien_laser_shot = pygame.mixer.Sound("sounds/laser_weapon_shot.wav")
+player_laser_shot = pygame.mixer.Sound("sounds/player_laser_gun.wav")
+game_over_sound = pygame.mixer.Sound("sounds/game_over_sound.wav")
 alien_die_sound = pygame.mixer.Sound("sounds/alien_dieing_sound.wav")
 
 alien_laser_shot.set_volume(0.1)
 player_laser_shot.set_volume(0.2)
-game_over_sound.set_volume(0.2)
+game_over_sound.set_volume(0.7)
 alien_die_sound.set_volume(0.15)
 
 mountains = [
@@ -76,6 +77,9 @@ alien_bullet_radius = 4
 alien_bullet_speed = 15
 alien_shoot_delay = 90
 alien_bullet_damage = 10
+
+shake_intensity = 0
+shake_duration = 0
 
 def draw_player(surface, x, y, angle):
     size = 16
@@ -190,7 +194,7 @@ while running:
             "x" : ax,
             "y" : ay,
             "cooldown" : random.randint(30, alien_shoot_delay),
-            "health" : 30
+            "health" : 30,
         })
 
     for alien in aliens:
@@ -248,6 +252,8 @@ while running:
                 if alien["health"] <= 0:
                     aliens.remove(alien)
                     alien_die_sound.play()
+                    shake_intensity = 3
+                    shake_duration = 5
                 break
 
     for bullet in alien_bullets[:]:
@@ -258,10 +264,14 @@ while running:
             alien_bullets.remove(bullet)
             continue
 
+        hit_mountain = False
         for mx, my, mr in mountains:
             if math.hypot(bullet[0] - mx, bullet[1] - my) < mr:
                 alien_bullets.remove(bullet)
+                hit_mountain = True
                 break
+        if hit_mountain:
+            continue
 
         if math.hypot(bullet[0] - player_x, bullet[1] - player_y) < player_radius:
             player_health -= alien_bullet_damage
@@ -272,22 +282,32 @@ while running:
                 player_alive = False
                 game_over = True
                 game_over_sound.play()
+                shake_intensity = 8
+                shake_duration = 10
             break
 
-    screen.fill(black)
-    pygame.draw.circle(screen, green, planet_center, planet_radius)
-    pygame.draw.circle(screen, gray, planet_center, base_radius)
-    draw_player(screen, player_x, player_y, player_angle)
-    draw_player_health(screen, player_health, player_max_health)
+    shake_x = shake_y = 0
+    if shake_duration > 0:
+        shake_x = random.randint(-shake_intensity, shake_intensity)
+        shake_y = random.randint(-shake_intensity, shake_intensity)
+        shake_duration -= 1
+    
+    offset_surface = pygame.Surface((WIDTH, HEIGHT))
+    offset_surface.fill(black)
+
+    pygame.draw.circle(offset_surface, green, planet_center, planet_radius)
+    pygame.draw.circle(offset_surface, gray, planet_center, base_radius)
+    draw_player(offset_surface, player_x, player_y, player_angle)
+    draw_player_health(offset_surface, player_health, player_max_health)
 
     for alien in aliens:
-        pygame.draw.circle(screen, red, (int(alien["x"]), int(alien["y"])), alien_radius)
+        pygame.draw.circle(offset_surface, red, (int(alien["x"]), int(alien["y"])), alien_radius)
 
         bar_width = 20
         bar_height =4
         health_ratio = alien["health"]/30
 
-        pygame.draw.rect(screen,
+        pygame.draw.rect(offset_surface,
                          magenta,
                          (
                             alien["x"] - bar_width//2,
@@ -298,24 +318,25 @@ while running:
                         )
                                            
     for mx, my, mr in mountains:
-        pygame.draw.circle(screen, brown, (mx, my), mr)
+        pygame.draw.circle(offset_surface, brown, (mx, my), mr)
     for bullet in alien_bullets:
-        pygame.draw.circle(screen, yellow_2, (int(bullet[0]), int(bullet[1])), alien_bullet_radius)
+        pygame.draw.circle(offset_surface, yellow_2, (int(bullet[0]), int(bullet[1])), alien_bullet_radius)
     for bullet in bullets:
         pygame.draw.circle(
-            screen, yellow, (int(bullet[0]), int(bullet[1])), bullet_radius
+            offset_surface, yellow, (int(bullet[0]), int(bullet[1])), bullet_radius
         )
-
+        
     if not player_alive:
         font = pygame.font.SysFont(None, 64)
         text = font.render("YOU DIED", True, (255,80,80))
         rect = text.get_rect(center = (WIDTH//2, HEIGHT//2))
-        screen.blit(text, rect)
+        offset_surface.blit(text, rect)
 
         small_font = pygame.font.SysFont(None, 32)
         game_over_text = small_font.render('Click "space" to restart', True, black)
         rect_2 = game_over_text.get_rect(center = (WIDTH//2, HEIGHT//2 + 26))
-        screen.blit(game_over_text, rect_2)
+        offset_surface.blit(game_over_text, rect_2)
+    screen.blit(offset_surface, (shake_x, shake_y))
 
     pygame.display.flip()
 pygame.quit()
