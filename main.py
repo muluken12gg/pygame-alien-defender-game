@@ -8,6 +8,12 @@ WIDTH, HEIGHT = 800, 800
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("my game")
 
+planet_center = (WIDTH//2, HEIGHT//2)
+planet_radius = 300
+
+mars_img = pygame.image.load("assets/planet/mars.png").convert_alpha()
+mars_img = pygame.transform.smoothscale(mars_img, (planet_radius * 2, planet_radius * 2))
+
 black = (0,0,0)
 green = (50,180,50)
 blue = (80,120,255)
@@ -27,11 +33,8 @@ magenta = (255, 0, 255)
 clock = pygame.time.Clock()
 FPS = 60
 
-planet_center = (WIDTH//2, HEIGHT//2)
-planet_radius = 300
-
 player_x = planet_center[0]
-player_y = planet_center[1]
+player_y = planet_center[1] - 250
 player_radius = 8
 player_speed = 4
 player_angle = 0
@@ -39,7 +42,7 @@ player_max_health = 100
 player_health = player_max_health
 player_alive = True
 game_over = False
-player_fire_rate = 10
+player_fire_rate = 20
 player_fire_cooldown = 0
 player_flash = 0
 
@@ -81,12 +84,25 @@ alien_bullet_damage = 10
 shake_intensity = 0
 shake_duration = 0
 
+base_img = pygame.image.load("assets/base/base.png").convert_alpha()
+base_img = pygame.transform.smoothscale(base_img, (base_radius * 2, base_radius * 2))
+
+def make_circle_surface(image, radius):
+    size = radius * 2
+    circle_surface = pygame.Surface((size, size), pygame.SRCALPHA)
+    
+    pygame.draw.circle(circle_surface, (255, 255, 255, 255), (radius, radius), radius)
+
+    circle_surface.blit(image, (0, 0), special_flags = pygame.BLEND_RGB_MULT)
+
+    return circle_surface
+
 def draw_player(surface, x, y, angle):
     size = 16
     tip = (x + math.cos(angle) * size, y + math.sin(angle) * size)
     left = (x + math.cos(angle + 2.5) * size, y + math.sin(angle + 2.5) * size)
     right = (x + math.cos(angle - 2.5) * size, y + math.sin(angle - 2.5) * size)
-    pygame.draw.polygon(surface, red, [tip, left, right])
+    pygame.draw.polygon(surface, blue, [tip, left, right])
 
 def draw_player_health(surface, health, max_health):
     bar_width = 200
@@ -108,7 +124,7 @@ def reset_game():
     global game_over, spawn_time
 
     player_x = planet_center[0]
-    player_y = planet_center[1]
+    player_y = planet_center[1] - 250
     player_health = player_max_health
     player_alive = True
 
@@ -118,6 +134,9 @@ def reset_game():
 
     spawn_time = 0
     game_over = False
+
+mars_img = make_circle_surface(mars_img, planet_radius)
+base_img = make_circle_surface(base_img, base_radius)
 
 running = True
 while running:
@@ -195,6 +214,7 @@ while running:
             "y" : ay,
             "cooldown" : random.randint(30, alien_shoot_delay),
             "health" : 30,
+            "flash" : 0
         })
 
     for alien in aliens:
@@ -247,6 +267,7 @@ while running:
         for alien in aliens[:]:
             if math.hypot(bullet[0] - alien["x"], bullet[1] - alien["y"]) < alien_radius:
                 alien["health"] -= player_bullet_damage
+                alien["flash"] = 4
                 bullets.remove(bullet)
 
                 if alien["health"] <= 0:
@@ -255,6 +276,7 @@ while running:
                     shake_intensity = 3
                     shake_duration = 5
                 break
+    
 
     for bullet in alien_bullets[:]:
         bullet[0] += bullet[2]
@@ -275,6 +297,7 @@ while running:
 
         if math.hypot(bullet[0] - player_x, bullet[1] - player_y) < player_radius:
             player_health -= alien_bullet_damage
+            player_flash = 6
             alien_bullets.remove(bullet)
 
             if player_health <= 0 and not game_over:
@@ -285,6 +308,8 @@ while running:
                 shake_intensity = 8
                 shake_duration = 10
             break
+    if player_flash > 0:
+        player_flash -= 1
 
     shake_x = shake_y = 0
     if shake_duration > 0:
@@ -295,9 +320,23 @@ while running:
     offset_surface = pygame.Surface((WIDTH, HEIGHT))
     offset_surface.fill(black)
 
-    pygame.draw.circle(offset_surface, green, planet_center, planet_radius)
-    pygame.draw.circle(offset_surface, gray, planet_center, base_radius)
+    mars_rect = mars_img.get_rect(center = planet_center)
+    offset_surface.blit(mars_img, mars_rect)
+
+    base_rect = base_img.get_rect(center = planet_center)
+    offset_surface.blit(base_img, base_rect)
+
     draw_player(offset_surface, player_x, player_y, player_angle)
+    if player_flash > 0:
+        flash_x = player_x + math.cos(player_angle) * player_radius
+        flash_y = player_y + math.sin(player_angle) * player_radius
+
+        pygame.draw.circle(
+            offset_surface,
+            red,
+            (int(flash_x), int(flash_y)),
+            6
+        )
     draw_player_health(offset_surface, player_health, player_max_health)
 
     for alien in aliens:
@@ -316,6 +355,8 @@ while running:
                             bar_height
                             )
                         )
+        
+
                                            
     for mx, my, mr in mountains:
         pygame.draw.circle(offset_surface, brown, (mx, my), mr)
