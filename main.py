@@ -124,7 +124,7 @@ def reset_game():
     global game_over, spawn_time
 
     player_x = planet_center[0]
-    player_y = planet_center[1] - 250
+    player_y = planet_center[1] - 249
     player_health = player_max_health
     player_alive = True
 
