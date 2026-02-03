@@ -46,7 +46,7 @@ player_fire_rate = 20
 player_fire_cooldown = 0
 player_flash = 0
 
-base_radius = 36
+base_radius = 38
 
 aliens=[]
 alien_speed = 1.5
